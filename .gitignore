@@ -1,3 +1,6 @@
 output*
 *.class
 *.swp
+*.bak
+*.log
+*.aux

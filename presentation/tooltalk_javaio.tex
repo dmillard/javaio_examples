@@ -1,0 +1,263 @@
+\documentclass{article}
+\usepackage[includeheadfoot,paperwidth=6in,paperheight=4.5in,
+            margin=.5in]{geometry}
+\usepackage{mathtools,amssymb,url}
+\usepackage{lastpage,fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\cfoot{\small \thepage{} / \pageref{LastPage}}
+
+\newenvironment{slide}[1]{\fancyhead[C]{\Large \textsc{#1}}}{\pagebreak}
+\def\labelitemi{$\gg$}
+
+\title{\texttt{java.io} Tool Talk: Streams and Files}
+\author{David Millard and Matthew Saltz \\
+        \texttt{\{dmillard,saltzm\}@uga.edu}}
+\date{January 14, 2013}
+
+\begin{document}
+
+\begin{slide}{}
+    \maketitle
+    \thispagestyle{empty}
+\end{slide}
+
+\setcounter{page}{1}
+
+\begin{slide}{I/O Streams}
+    \begin{itemize}
+        \item An \emph{I/O Stream} provides an input source or output
+            destination to a program (e.g. disk files, devices, other programs,
+            memory arrays, etc.)
+        \item Streams support many data types (including objects) and may be
+            passive (forward data) or active (transform data)
+        \item All streams provide the same model to the program: streams are
+            sequences of data
+    \end{itemize}
+    \begin{figure}[h]
+        \centering
+        $\fbox{Data} \xrightarrow{\text{Input Stream}} \fbox{Program}$\\
+        \vspace{.5em}
+        $\fbox{Program} \xrightarrow{\text{Output Stream}} \fbox{Data}$
+        \label{fig:streamdirections}
+        \caption{Visualization of streams}
+    \end{figure}
+\end{slide}
+
+\begin{slide}{Simple Example}
+    To demonstrate common stream functions, we will use the very basic
+    \emph{byte stream} with the following input file \texttt{xanadu.txt}, which
+    contains:
+
+    \begin{verbatim}
+    In Xanadu did Kubla Khan
+    A stately pleasure-dome decree:
+    Where Alph, the sacred river, ran
+    Through caverns measureless to man
+    Down to a sunless sea.
+    \end{verbatim}
+
+    To follow along with the examples, run:
+    
+    \begin{verbatim}
+    git clone https://github.com/dmillard/javaio_examples.git
+    \end{verbatim}
+\end{slide}
+
+\begin{slide}{Simple Example (contd.)}
+    \begin{itemize}
+        \item Programs use \emph{byte streams} to directly input and output
+            bytes.
+        \item All byte stream classes are descended from \texttt{InputStream}
+            and \texttt{OutputStream}
+        \item This example uses \texttt{FileInputStream} and
+            \texttt{FileOutputStream}
+        \item The code for this example is in
+            \texttt{Example1\_CopyBytes.java}
+    \end{itemize}
+\end{slide}
+
+\begin{slide}{Notes on Example 1}
+    \begin{itemize}
+        \item Always close streams: this helps to prevent resource leaks
+        \item As Example 1 showed, closing in a \texttt{finally} block helps
+            ensure that all streams are appropriately closed
+        \item Although Example 1 is very simple, it is too low level: as we are
+            dealing with character data, we should be using \emph{character
+            streams}
+    \end{itemize}
+\end{slide}
+
+\begin{slide}{Character Streams}
+    \begin{itemize}
+        \item Character stream I/O is generally no more complex than byte
+            stream I/O
+        \item Character stream I/O, however, automatically translates from
+            internal Unicode to the local character set (useful for
+            internationalization)
+        \item All character stream classes are descended from \texttt{Reader}
+            and \texttt{Writer}.  As with byte streams, there are character
+            stream classes specialized for files: \texttt{FileReader} and
+            \texttt{FileWriter}
+        \item The code for this example is in
+            \texttt{Example2\_CopyCharacters.java}
+    \end{itemize}
+\end{slide}
+
+\begin{slide}{Byte vs. Character Streams}
+    \begin{itemize}
+        \item Both examples have the same effect: what is different?
+        \item Obviously, different classes: \texttt{FileReader} vs.
+            \texttt{FileInputStream}
+        \item Internally, \texttt{int c} holds different values:
+            \begin{itemize}
+                \item In the byte stream example, the last 8 bits hold the
+                    byte to be copied
+                \item In the character stream example, the last 16 bits hold
+                    the character to be copied
+            \end{itemize}
+        \item Character streams can often be wrappers for byte streams:
+            \texttt{FileReader} for example, uses \texttt{FileInputStream}
+            internally
+    \end{itemize}
+\end{slide}
+
+\begin{slide}{Line-Oriented I/O}
+    \begin{itemize}
+        \item Character I/O rarely happens character-by-character; commonly it
+            is line-by-line
+        \item A line is a string of characters with a line terminator
+            (\texttt{"\textbackslash r\textbackslash n"},
+             \texttt{"\textbackslash r"}, or \texttt{"\textbackslash n"})
+         \item This example uses \texttt{BufferedReader} and
+             \texttt{PrintWriter}, which will be discussed more in depth later
+         \item The code for this example is in
+             \texttt{Example3\_CopyLines.java}
+     \end{itemize}
+\end{slide}
+
+\begin{slide}{Buffered Streams}
+    \begin{itemize}
+        \item Examples 1 and 2 use \emph{unbuffered} I/O, meaning that each
+            read and write request is handled directly by the OS
+        \item This is often slow: each request often will trigger disk access
+        \item We can reduce this overhead with \emph{buffered streams}, which
+            read data from a memory area (known as a \emph{buffer})
+        \item Thus, OS calls are only made when the buffer is empty
+        \item This functionality is implemented with
+            \texttt{BufferedReader} and \texttt{BufferedWriter}, which are
+            buffered drop-ins for \texttt{Reader} and \texttt{Writer}
+        \item To buffer input to Example 2, we could have written:
+    \end{itemize}
+    \begin{verbatim}
+    out = new BufferedWriter(new FileWriter("xanadu.txt"));
+    \end{verbatim}
+\end{slide}
+
+\begin{slide}{Tokenizing and Translating Input}
+    \begin{itemize}
+        \item \texttt{Scanner} objects are useful for breaking down formatted
+            input into individual tokens and translating according to type
+        \item By default, \texttt{Scanner}s use whitespace characters to
+            delimit tokens
+        \item The code for this example is in \texttt{Example4\_Tokenize.java}
+        \item Scanners can interpret character encoded data as types, as
+            well \\ (e.g. "15.2" $\rightarrow 15.2$ and "1,234.5" $\rightarrow
+            1234.5$)
+        \item The code for this example is in \texttt{Example5\_Translate.java}
+    \end{itemize}
+\end{slide}
+
+\begin{slide}{Data Streams}
+    \begin{itemize}
+        \item \emph{Data streams} support binary I/O of primitive data type
+            values, as well as String values
+        \item All data streams implement either the \texttt{DataInput}
+            interface or the \texttt{DataOutput} interface
+        \item The commonly used implementations are
+            \texttt{DataInputStream}\\ and \texttt{DataOutputStream}
+        \item The code for this example is in
+            \texttt{Example6\_DataStreams.java}
+        \item Of course, you should never use \texttt{double} to represent
+            currency values, which leads us to...
+    \end{itemize}
+\end{slide}
+
+\begin{slide}{Object Streams}
+    \begin{itemize}
+        \item Like data streams provide stream I/O for primitive data types,
+            object streams support stream I/O for objects
+        \item Most (not all) standard classes support serialization
+        \item Classes supporting serialization implement \texttt{Serializable}
+        \item The object streams are \texttt{ObjectInputStream} and
+            \texttt{ObjectOutputStream}
+        \item These implement \texttt{ObjectInput} and \texttt{ObjectOutput},
+            which are sub-interfaces of \texttt{DataInput} and
+            \texttt{DataOutput}
+    \end{itemize}
+\end{slide}
+
+\begin{slide}{Complex Objects with Streams}
+    \begin{itemize}
+        \item \texttt{writeObject} and \texttt{readObject} are simple to use,
+            but they contain some sophisticated object management logic
+        \item Consider an object which contains references to other objects
+        \item \texttt{writeObject(object0)} will write all objects necessary to
+            reconstitute \texttt{object0}
+        \item What if two objects written to the same stream both contain
+            references to a single object?
+            \begin{itemize}
+                \item Both will refer to a single object when they are read
+                    back
+                \item A stream can only contain one copy of an object, buy any
+                    number of references to that object
+                \item Therefore, two writes of the same object is actually a
+                    single write of the object and two writes of references to
+                    the object
+            \end{itemize}
+        \item A simple example is in \texttt{Example7\_ObjectStream.java}
+    \end{itemize}
+\end{slide}
+
+\begin{slide}{Files}
+    \begin{itemize}
+        \item Java \texttt{File}s are abstract representations of file and
+            directory pathnames
+        \item Java \texttt{File} provides some methods for manipulating
+            pathnames, like \\\texttt{getParent()}, which gives the parent
+            directory of the file
+        \item Though all examples use pathnames directly as \texttt{FileReader}
+            constructor parameters, they could use \texttt{File} objects with
+            more flexibility
+        \item For more control over how information is written to disk, we turn
+            to \\\texttt{RandomAccessFile}s
+    \end{itemize}
+\end{slide}
+
+\begin{slide}{Random Access Files}
+    \begin{itemize}
+        \item \texttt{RandomAccessFiles} support both reading and writing to a
+            random access file
+        \item A random access file behaves like a large array of bytes on disk
+        \item There is an index, or cursor, called the \emph{file pointer},
+            which which determines at which point bytes are written and read
+        \item The \emph{file pointer} can be read by the
+            \texttt{getFilePointer} method and set by the \texttt{seek} method
+        \item \texttt{RandomAccessFile} implements \texttt{DataOutput} and
+            \texttt{DataInput}, and therefore provides the reading and writing
+            functionality we would expect from streams
+    \end{itemize}
+\end{slide}
+
+\begin{slide}{References}
+    \begin{itemize}
+        \item
+            \url{docs.oracle.com/javase/7/docs/api/java/io/RandomAccessFile.html}
+        \item
+            \url{docs.oracle.com/javase/7/docs/api/java/io/File.html}
+        \item
+            \url{docs.oracle.com/javase/tutorial/essential/io/index.html}
+    \end{itemize}
+\end{slide}
+
+\end{document}
